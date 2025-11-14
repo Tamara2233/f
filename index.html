@@ -3,17 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Шахматная задача — мат королевой + аниме 2D-анимация</title>
+<title>Мат королевой — аниме сцена</title>
 <style>
   :root{
-    --bg-1: #071029;
-    --bg-2: #061b2b;
-    --light: #f6ecd4;
-    --dark: #5a402b;
-    --accent: #ffb86b;
-    --accent-2: #7bdff6;
-    --board-max: 640px;
-    --board-gap: 18px;
+    --bg1:#071026; --bg2:#041623;
+    --sq-light:#f3ecd7; --sq-dark:#6b4b33;
+    --accent:#ffb86b;
+    --card:#071726aa;
+    --board-max:640px;
   }
   *{box-sizing:border-box}
   body{
@@ -22,557 +19,529 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:28px;
-    background: linear-gradient(180deg,var(--bg-1) 0%, var(--bg-2) 100%);
-    color:#e6eef8;
-    font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+    padding:24px;
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(20,40,60,0.35), transparent),
+                linear-gradient(180deg,var(--bg1) 0%, var(--bg2) 100%);
+    color:#e7f0fb;
   }
-  .wrap{
+  .container{
     width:100%;
-    max-width:1100px;
-    display:flex;
-    gap:var(--board-gap);
-    align-items:flex-start;
-    justify-content:center;
+    max-width:1120px;
+    margin:auto;
+    display:grid;
+    grid-template-columns: 1fr 560px;
+    gap:28px;
+    align-items:start;
   }
-  /* LEFT: board column */
-  .left{
-    width: min(var(--board-max), 48%);
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    align-items:center;
+  @media (max-width:980px){
+    .container{ grid-template-columns: 1fr; padding-bottom:40px }
   }
-  h1{font-size:18px;margin:0 0 4px 0}
-  .subtitle{font-size:13px;color:#a8c0d6;margin:0}
-  /* board container keeps square layout */
+
+  /* left: board + controls */
+  .panel{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+    border-radius:14px;
+    padding:18px;
+    box-shadow: 0 18px 50px rgba(2,6,20,0.6);
+  }
+  h1{ margin:0 0 6px 0; font-size:18px }
+  p.small{ margin:0 0 14px 0; color:#b8d3ea }
+
   .board-wrap{
     width:100%;
-    border-radius:14px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
-    padding:14px;
-    box-shadow: 0 14px 40px rgba(3,8,20,0.6);
+    max-width:var(--board-max);
+    margin:auto;
+    border-radius:12px;
+    padding:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.04));
   }
+
+  /* responsive square grid using aspect-ratio */
   .board{
-    width:100%;
-    --cells:8;
     display:grid;
     grid-template-columns: repeat(8,1fr);
     gap:0;
     border-radius:8px;
     overflow:hidden;
-    /* to keep squares proportional: use pseudo-element for width control */
+    width:100%;
+    user-select:none;
   }
-  /* each cell uses aspect-ratio for perfect squares (modern browsers) */
   .cell{
     position:relative;
-    width:100%;
     aspect-ratio: 1 / 1;
     display:flex;
     align-items:center;
     justify-content:center;
+    transition:background 160ms ease, transform 120ms ease;
     cursor:pointer;
-    transition: background 140ms ease, transform 140ms ease;
   }
-  .cell.light{ background: var(--light); }
-  .cell.dark{ background: var(--dark); }
-  .cell.highlight{ outline: 4px solid rgba(255,184,103,0.45); box-sizing:border-box; }
-  .cell.bad{ animation: shake 360ms; }
-  @keyframes shake {
-    0%{ transform: translateX(0) } 25%{ transform: translateX(-6px) } 50%{ transform: translateX(6px) } 75%{ transform: translateX(-4px) } 100%{ transform: translateX(0) }
-  }
+  .cell.light{ background: var(--sq-light); }
+  .cell.dark{ background: var(--sq-dark); color:#fff; }
+  .cell.highlight{ box-shadow: inset 0 0 0 6px rgba(255,184,103,0.22); }
+  .cell.invalid{ animation: pulse 420ms ease; }
+  @keyframes pulse { 0%{ transform:translateX(0)} 50%{ transform:translateX(-6px)} 100%{ transform:translateX(0)} }
 
-  /* svg piece styling */
-  .piece-svg{
-    width:64%;
-    height:64%;
+  .piece {
+    width:70%;
+    height:70%;
     display:block;
     pointer-events:none;
-    filter: drop-shadow(0 6px 10px rgba(3,8,20,0.35));
-    transition: transform 170ms ease;
+    filter: drop-shadow(0 10px 18px rgba(3,8,20,0.5));
+    transition: transform 200ms ease;
   }
-  .piece-container{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-
-  .controls{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:6px; }
+  .controls{
+    display:flex; gap:8px; align-items:center; margin-top:10px;
+  }
   .btn{
-    background:linear-gradient(180deg,#2b74ff,#1b4fd6);
-    color:white;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:600;
-    font-size:13px;
+    background:linear-gradient(180deg,#2f7dff,#1d4ed8);
+    color:white; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600;
   }
-  .muted{ color:#a8c0d6; font-size:13px }
+  .hint{ color:#9cc5e5; font-size:14px; }
 
-  /* RIGHT: animation panel */
-  .right{
-    width: min(520px, 48%);
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    align-items:center;
+  /* right: scene */
+  .scene-card{
+    border-radius:14px;
+    padding:12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.18));
+    box-shadow: 0 20px 60px rgba(1,6,12,0.6);
+    position:relative;
+    overflow:hidden;
   }
   .scene {
     width:100%;
-    aspect-ratio: 16 / 9;
-    background: linear-gradient(180deg,#041025 0%, #020814 100%);
-    border-radius:12px;
+    height:420px;
+    border-radius:10px;
     overflow:hidden;
+    background: radial-gradient(800px 300px at 20% 10%, rgba(255,200,120,0.04), transparent),
+               linear-gradient(180deg,#041024 0%, #02040a 100%);
     position:relative;
-    box-shadow: 0 20px 50px rgba(2,6,20,0.6);
   }
   .scene svg{ width:100%; height:100%; display:block; }
 
-  /* anime-style effects */
-  .flash {
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    mix-blend-mode: screen;
+  .caption{
+    margin-top:10px; color:#cfe7ff; font-size:13px; text-align:center;
   }
-  .msg-area{ text-align:center; font-size:14px; color:#cfe8ff; min-height:28px }
 
-  /* responsive tweaks */
-  @media (max-width:900px){
-    .wrap{ flex-direction:column; align-items:center; }
-    .left, .right{ width:100% }
-  }
+  /* animation helper classes */
+  .fade-out{ animation: fadeOut 420ms forwards; }
+  @keyframes fadeOut{ to { opacity:0; transform:scale(0.98); } }
+
+  .center-note{ text-align:center; color:#c2dff6; font-size:13px; margin-top:10px; }
 
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="left">
-      <h1>Мат королевой в 1 ход — задача</h1>
-      <p class="subtitle">Кликни по белой королеве ♕ (выделится), затем по клетке, где ставится мат. Неверный ход — мягкая подсказка.</p>
+  <div class="container">
+    <div class="panel">
+      <h1>Шахматная задача — мат королевой в 1 ход</h1>
+      <p class="small">Нажми на белую ♕ (королеву), затем на подсвеченную клетку — правильный ход запускает аниме-сцену.</p>
 
       <div class="board-wrap" id="boardWrap">
-        <div id="board" class="board" role="grid" aria-label="Шахматная доска"></div>
+        <div id="board" class="board" aria-label="Шахматная доска"></div>
+
         <div class="controls">
-          <button id="resetBtn" class="btn">Сбросить</button>
-          <div class="muted">Позиция: Белые: Kg6, Qh6. Чёрные: Kg8, pg7. Ход белых.</div>
+          <button id="reset" class="btn">Сбросить позицию</button>
+          <div style="flex:1" class="hint">Позиция: Белые: Kg6, Qh6. Чёрные: Kg8, pg7. Ход белых.</div>
         </div>
       </div>
-      <div class="msg-area" id="message"></div>
+
+      <div class="center-note" id="message">Выбери ферзя ♕, затем цель для мата.</div>
     </div>
 
-    <div class="right">
-      <h1 style="font-size:16px;margin:0">Аниме-стилизованная 2D-сцена</h1>
-      <p class="subtitle" style="margin-bottom:6px">Плавная линейная анимация: превращение → взмах → эффект и финал (без насилия).</p>
+    <div class="scene-card">
+      <h1 style="margin:0 0 8px 0;font-size:18px">Аниме-стилизованная сцена — динамика Attack on Titan</h1>
       <div class="scene" id="scene" aria-hidden="true">
-        <!-- SVG injected dynamically -->
+        <!-- SVG сцена вставится сюда -->
       </div>
-      <div style="display:flex; gap:8px; width:100%; justify-content:center;">
-        <button id="replayBtn" class="btn" style="visibility:hidden">Повторить анимацию</button>
-      </div>
+      <div class="caption">Сцена: превращение → рывок → корона летит → король падает. Никакой графики — только драматизм.</div>
     </div>
   </div>
 
 <script>
-/* --------------------------
-  Правильная шахматная позиция (легальная):
-  Белые: Kg6, Qh6
-  Чёрные: Kg8, pg7
-  Ход белых. Мат: Qxg7#
-  Почему нельзя съесть: король на g8 не может взять ферзя на g7, потому что ферзь защищён белым королём на g6.
----------------------------- */
+/* ========== ИНФОРМАЦИЯ О ПОЗИЦИИ (легальная) ==========
+   Белые: Kg6, Qh6
+   Чёрные: Kg8, pg7
+   Ход белых. Мат: Qxg7# — король не может взять ферзя,
+   потому что g7 защищено белым королём на g6.
+======================================================*/
 
 const files = ['a','b','c','d','e','f','g','h'];
 const ranks = [8,7,6,5,4,3,2,1];
-const boardEl = document.getElementById('board');
-const msg = document.getElementById('message');
-const sceneEl = document.getElementById('scene');
-const replayBtn = document.getElementById('replayBtn');
-const resetBtn = document.getElementById('resetBtn');
+const board = document.getElementById('board');
+const message = document.getElementById('message');
+const scene = document.getElementById('scene');
+const resetBtn = document.getElementById('reset');
 
-let state = {
-  selected: null,
-  moving: false
+let state = { selected:null, moving:false };
+
+let pieces = {
+  'g6': {side:'w', type:'king'},
+  'h6': {side:'w', type:'queen'},
+  'g8': {side:'b', type:'king'},
+  'g7': {side:'b', type:'pawn'}
 };
 
-// pieces (using lightweight SVG icons below)
-let boardPieces = {
-  'g6': {side:'w', type:'king'},   // white king
-  'h6': {side:'w', type:'queen'},  // white queen (selectable)
-  'g8': {side:'b', type:'king'},   // black king
-  'g7': {side:'b', type:'pawn'}    // black pawn (to be captured)
-};
-
-const mateFrom = 'h6';
-const mateTo = 'g7';
+const source = 'h6';
+const target = 'g7';
 
 function makeBoard(){
-  boardEl.innerHTML = '';
+  board.innerHTML = '';
   for(let r=0;r<8;r++){
     for(let f=0;f<8;f++){
       const sq = files[f] + ranks[r];
       const div = document.createElement('div');
       div.className = 'cell ' + (((f + r) % 2 === 0) ? 'light' : 'dark');
-      div.dataset.square = sq;
-      div.setAttribute('role','gridcell');
+      div.dataset.sq = sq;
       div.addEventListener('click', onCellClick);
-      // place piece if exists
-      if(boardPieces[sq]){
-        const cont = document.createElement('div');
-        cont.className = 'piece-container';
-        cont.innerHTML = pieceSVG(boardPieces[sq].side, boardPieces[sq].type);
-        // ensure queen selectable only on mateFrom
-        if(sq === mateFrom){
-          cont.style.cursor = 'pointer';
-          cont.title = 'Кликни, чтобы выбрать королеву';
-          cont.addEventListener('click', (e)=>{
+      if(pieces[sq]){
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = getPieceSVG(pieces[sq].side, pieces[sq].type);
+        wrapper.firstElementChild.classList.add('piece');
+        // make source selectable
+        if(sq === source && pieces[sq].type === 'queen'){
+          wrapper.style.cursor = 'pointer';
+          wrapper.title = 'Кликни, чтобы выбрать королеву';
+          wrapper.firstElementChild.addEventListener('click', (e)=>{
             e.stopPropagation();
-            selectQueen(sq);
+            selectSource(sq);
           });
         } else {
-          cont.style.pointerEvents = 'none'; // non-selectable
+          wrapper.style.pointerEvents = 'none';
         }
-        div.appendChild(cont);
+        div.appendChild(wrapper);
       }
-      boardEl.appendChild(div);
+      board.appendChild(div);
     }
   }
-  msg.textContent = 'Выбери ферзя (♕) и затем целевую клетку матa.';
+  message.textContent = 'Выбери ферзя ♕, затем целевую клетку для мата.';
 }
 
-// SVG piece factory (stylized, vector, neat)
-function pieceSVG(side, type){
-  // use monochrome vectors: white pieces are light fill, black pieces are dark stroke
-  const lightFill = side === 'w' ? '#ffffff' : '#0a1320';
-  const darkFill = side === 'w' ? '#f1c97d' : '#8eaec8';
-  const stroke = side === 'w' ? '#d1d5db' : '#0b2230';
-  if(type === 'king'){
-    return `
-      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g transform="translate(2,2)">
-          <rect x="17" y="1" width="6" height="8" rx="1" fill="${lightFill}" stroke="${stroke}" stroke-width="0.6"/>
-          <rect x="6" y="28" width="32" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
-          <path d="M9 28 C18 12, 27 12, 36 28" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
-          <circle cx="24" cy="10" r="4" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
-        </g>
-      </svg>
-    `;
-  } else if(type === 'queen'){
-    // more decorative crown for queen
-    return `
-      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g transform="translate(2,2)">
-          <path d="M6 30 C18 12, 27 12, 39 30 L6 30 Z" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
-          <circle cx="10" cy="14" r="3.2" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
-          <circle cx="24" cy="10" r="3.6" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
-          <circle cx="38" cy="14" r="3.2" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
-          <rect x="12" y="28" width="18" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
-        </g>
-      </svg>
-    `;
-  } else if(type === 'pawn'){
-    return `
-      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g transform="translate(2,2)">
-          <circle cx="22" cy="14" r="6" fill="${lightFill}" stroke="${stroke}" stroke-width="0.8"/>
-          <rect x="12" y="26" width="20" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
-        </g>
-      </svg>
-    `;
-  }
-  return '';
-}
-
-/* Interaction */
-function selectQueen(square){
+function selectSource(sq){
   if(state.moving) return;
-  // highlight queen and the only correct target
-  clearHighlights();
-  const fromEl = document.querySelector(`[data-square="${square}"]`);
-  fromEl.classList.add('highlight');
-  const toEl = document.querySelector(`[data-square="${mateTo}"]`);
-  toEl.classList.add('highlight');
-  state.selected = square;
+  state.selected = sq;
   state.moving = true;
-  msg.textContent = 'Королева выбрана. Кликни по подсвеченной клетке, чтобы поставить мат.';
-}
-
-function clearHighlights(){
-  document.querySelectorAll('.cell.highlight').forEach(n=>n.classList.remove('highlight'));
-  state.selected = null; state.moving = false;
+  document.querySelectorAll('.cell').forEach(c=>c.classList.remove('highlight'));
+  document.querySelector(`[data-sq="${sq}"]`).classList.add('highlight');
+  document.querySelector(`[data-sq="${target}"]`).classList.add('highlight');
+  message.textContent = 'Королева выбрана. Кликни по подсвеченной клетке.';
 }
 
 function onCellClick(e){
-  const sq = e.currentTarget.dataset.square;
+  const sq = e.currentTarget.dataset.sq;
   if(!state.moving){
-    // gentle hint
-    e.currentTarget.classList.add('bad');
-    setTimeout(()=>e.currentTarget.classList.remove('bad'),360);
-    msg.textContent = 'Сначала выбери королеву (♕) — она подсвечена слева.';
+    // hint shake
+    e.currentTarget.classList.add('invalid');
+    setTimeout(()=>e.currentTarget.classList.remove('invalid'),380);
+    message.textContent = 'Сначала выбери ферзя (♕).';
     return;
   }
-  if(state.selected !== mateFrom){
-    msg.textContent = 'Выбрана не та фигура, сбросьте выбор.';
+  if(state.selected !== source){
+    message.textContent = 'Неверный выбор фигуры.';
     return;
   }
-  if(sq === mateTo){
-    // perform animated move and then launch scene
-    msg.textContent = 'Ход выполнен — мат. Запуск анимации.';
-    animateQueenMove(mateFrom, mateTo, () => {
-      // update internal board
-      delete boardPieces[mateFrom];
-      boardPieces[mateTo] = {side:'w', type:'queen'};
-      delete boardPieces[mateTo === 'g7' ? 'g7' : mateTo]; // ensure pawn removed (just to be safe)
-      // remove captured pawn
-      if(boardPieces['g7'] && boardPieces['g7'].side === 'b' && boardPieces['g7'].type === 'pawn'){
-        delete boardPieces['g7'];
-      }
-      // final render and show animation scene
-      setTimeout(()=>{
-        makeBoard();
-        showScene();
-      }, 350);
+  if(sq === target){
+    // correct move
+    message.textContent = 'Ход выполнен — мат. Запуск сцены...';
+    animateMove(source, target, ()=> {
+      // update logical board
+      delete pieces[source];
+      delete pieces[target]; // capture pawn
+      pieces[target] = {side:'w', type:'queen'};
+      // fresh board and start scene
+      setTimeout(()=>{ makeBoard(); startScene(); }, 350);
     });
   } else {
-    // wrong target
-    msg.textContent = 'Это не тот ход. Попробуйте кликнуть по подсвеченной клетке.';
-    const targetEl = document.querySelector(`[data-square="${sq}"]`);
-    targetEl.classList.add('bad');
-    setTimeout(()=>targetEl.classList.remove('bad'),360);
+    message.textContent = 'Это не тот ход. Нажми на подсвеченную клетку.';
+    e.currentTarget.classList.add('invalid');
+    setTimeout(()=>e.currentTarget.classList.remove('invalid'),380);
   }
 }
 
-function animateQueenMove(from, to, cb){
-  // visual clone moving from->to
-  const fromEl = document.querySelector(`[data-square="${from}"]`);
-  const toEl = document.querySelector(`[data-square="${to}"]`);
-  const pieceNode = fromEl.querySelector('.piece-container');
-  if(!pieceNode){ cb(); return; }
-  const clone = pieceNode.cloneNode(true);
-  clone.style.position = 'absolute';
-  const boardRect = boardEl.getBoundingClientRect();
-  const fr = fromEl.getBoundingClientRect();
-  clone.style.left = (fr.left - boardRect.left) + 'px';
-  clone.style.top  = (fr.top - boardRect.top) + 'px';
-  clone.style.width = fr.width + 'px';
-  clone.style.height= fr.height + 'px';
+// animate simple piece move visually (clone)
+function animateMove(from,to,cb){
+  const fromEl = document.querySelector(`[data-sq="${from}"]`);
+  const toEl = document.querySelector(`[data-sq="${to}"]`);
+  const pieceEl = fromEl.querySelector('.piece');
+  if(!pieceEl){ if(cb) cb(); return; }
+  const clone = pieceEl.cloneNode(true);
+  clone.style.position='absolute';
+  const boardRect = board.getBoundingClientRect();
+  const fRect = fromEl.getBoundingClientRect();
+  clone.style.left = (fRect.left - boardRect.left) + 'px';
+  clone.style.top  = (fRect.top - boardRect.top) + 'px';
+  clone.style.width = fRect.width + 'px';
+  clone.style.height = fRect.height + 'px';
   clone.style.zIndex = 999;
   clone.style.transition = 'all 420ms cubic-bezier(.2,.95,.2,1)';
-  boardEl.appendChild(clone);
-  // remove original piece visually
-  const original = fromEl.querySelector('.piece-container');
-  if(original) original.remove();
-  // move
-  const toRect = toEl.getBoundingClientRect();
+  board.appendChild(clone);
+  // remove original
+  pieceEl.parentElement.remove();
+  const tRect = toEl.getBoundingClientRect();
   requestAnimationFrame(()=> {
-    clone.style.left = (toRect.left - boardRect.left) + 'px';
-    clone.style.top  = (toRect.top - boardRect.top) + 'px';
+    clone.style.left = (tRect.left - boardRect.left) + 'px';
+    clone.style.top  = (tRect.top - boardRect.top) + 'px';
     clone.style.transform = 'scale(1.02)';
   });
   setTimeout(()=>{ clone.remove(); if(cb) cb(); }, 460);
 }
 
-/* ----------- Scene: anime-style linear 2D animation (no gore) ---------- */
-function showScene(){
-  sceneEl.innerHTML = ''; // clear
-  sceneEl.setAttribute('aria-hidden','false');
-  replayBtn.style.visibility = 'visible';
-  // create SVG anime scene
-  sceneEl.innerHTML = `
-  <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+/* ======== SVG pieces (stylized, anime-like vectors) ======== */
+function getPieceSVG(side, type){
+  // side: 'w' or 'b'. We'll use color palettes.
+  const palette = {
+    w: {body:'#fff7f2', tone:'#ffd8a6', stroke:'#1b2130'},
+    b: {body:'#2b3b4b', tone:'#1f2a36', stroke:'#071425'}
+  };
+  const p = palette[side];
+  if(type === 'king'){
+    return `
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g transform="translate(10,8)">
+        <rect x="46" y="8" width="8" height="22" rx="2" fill="${p.tone}" stroke="${p.stroke}" stroke-width="1.2"/>
+        <rect x="30" y="50" width="48" height="26" rx="6" fill="${p.body}" stroke="${p.stroke}" stroke-width="1.4"/>
+        <path d="M14 50 C30 18, 78 18, 104 50 L104 74 L16 74 Z" fill="${p.body}" stroke="${p.stroke}" stroke-width="1.2"/>
+        <circle cx="54" cy="28" r="12" fill="${p.tone}" stroke="${p.stroke}" stroke-width="1.2" />
+        <!-- crown hint -->
+        <g transform="translate(44,6)">
+          <rect x="-10" y="-4" width="28" height="8" rx="2" fill="#ffd86b" stroke="#c77b00" stroke-width="0.9"/>
+        </g>
+      </g>
+    </svg>`;
+  }
+  if(type === 'queen'){
+    return `
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="qGrad" x1="0" x2="1"><stop offset="0" stop-color="#fffaf6"/><stop offset="1" stop-color="#ffdcb3" /></linearGradient>
+      </defs>
+      <g transform="translate(10,6)">
+        <!-- body -->
+        <path d="M16 58 C36 22, 84 22, 104 58 L92 86 L28 86 Z" fill="url(#qGrad)" stroke="#141821" stroke-width="1.2"/>
+        <!-- cloak accent -->
+        <path d="M28 86 C46 62, 76 62, 92 86" fill="#ffd7a8" opacity="0.25"/>
+        <!-- head -->
+        <circle cx="56" cy="30" r="12" fill="#fff8f2" stroke="#141821" stroke-width="1"/>
+        <!-- ornate crown -->
+        <g transform="translate(36,4)">
+          <path d="M0,20 L8,0 L20,12 L32,0 L40,20 Z" fill="#ffd86b" stroke="#c77b00" stroke-width="0.9" transform="translate(-4,-6)"/>
+        </g>
+        <!-- sword hint (small) -->
+        <rect x="74" y="36" width="36" height="6" rx="3" fill="#dfeffb" stroke="#9fbfe0" stroke-width="0.6" transform="rotate(18,74,36)"/>
+      </g>
+    </svg>`;
+  }
+  if(type === 'pawn'){
+    return `
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g transform="translate(18,16)">
+        <circle cx="36" cy="20" r="8" fill="${p.body}" stroke="${p.stroke}" stroke-width="1"/>
+        <rect x="16" y="36" width="40" height="18" rx="4" fill="${p.body}" stroke="${p.stroke}" stroke-width="1.1"/>
+      </g>
+    </svg>`;
+  }
+  return '';
+}
+
+/* ===== Animation scene (anime-like, Attack-on-Titan inspired, non-graphic) ===== */
+function startScene(){
+  // hide board panel (soft)
+  const boardWrap = document.getElementById('boardWrap');
+  boardWrap.classList.add('fade-out');
+  setTimeout(()=> boardWrap.style.display='none',420);
+
+  // prepare scene SVG
+  scene.innerHTML = `
+  <svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>
-      <linearGradient id="bgGrad" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0" stop-color="#08172a"/>
-        <stop offset="1" stop-color="#03060b"/>
+      <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#061423"/>
+        <stop offset="1" stop-color="#02040a"/>
       </linearGradient>
-      <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="6" />
+      <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="8" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
-      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="8" result="blur"/>
-        <feMerge>
-          <feMergeNode in="blur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-      <radialGradient id="impactGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#fff8d6" stop-opacity="0.95"/>
-        <stop offset="50%" stop-color="#ffd2a3" stop-opacity="0.6"/>
-        <stop offset="100%" stop-color="#ff8fb3" stop-opacity="0"/>
-      </radialGradient>
     </defs>
 
-    <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+    <rect width="100%" height="100%" fill="url(#bg)"/>
 
-    <!-- stylized stage floor -->
-    <g transform="translate(0,520)">
-      <ellipse cx="640" cy="100" rx="520" ry="80" fill="rgba(0,0,0,0.35)"/>
-      <g id="floorLines" opacity="0.12" transform="translate(0,0)">
-        <rect x="140" y="50" width="1000" height="2" fill="#9ccbe7"/>
-        <rect x="100" y="70" width="1080" height="2" fill="#6fb8e6"/>
+    <!-- speedlines background -->
+    <g id="speedlines" opacity="0.0" transform="translate(0,0)">
+      <rect x="0" y="0" width="1280" height="720" fill="none"/>
+      <g stroke="#ffffff" stroke-opacity="0.06" stroke-width="6">
+        <path d="M60 0 L420 720" stroke-linecap="round" />
+        <path d="M140 0 L500 720" stroke-linecap="round" stroke-width="8" />
+        <path d="M220 0 L580 720" stroke-linecap="round" />
       </g>
     </g>
 
-    <!-- motion lines (hidden initially) -->
-    <g id="motionLines" opacity="0">
-      <path d="M420 320 C540 240, 720 240, 860 320" stroke="#ffd89b" stroke-width="6" stroke-linecap="round" fill="none" stroke-linejoin="round" stroke-opacity="0.85"/>
-      <path d="M440 340 C560 260, 700 260, 820 340" stroke="#ff9fb3" stroke-width="4" stroke-linecap="round" fill="none" stroke-opacity="0.7"/>
-    </g>
-
-    <!-- queen -> girl morph (left) -->
-    <g id="hero" transform="translate(360,360)">
-      <!-- base silhouette (faint) -->
-      <g id="heroBody" transform="translate(0,0)">
-        <path id="heroShadow" d="M-28 20 C-12 -40, 12 -40, 28 20 L28 68 L-28 68 Z" fill="#ffffff" opacity="0.95" transform="translate(0,-50) scale(0.95)"/>
-        <circle id="heroHead" cx="0" cy="-70" r="16" fill="#fff" opacity="0.98"/>
+    <!-- Hero (queen -> girl) on left -->
+    <g id="hero" transform="translate(300,360)">
+      <!-- shadow / silhouette -->
+      <g id="heroBody">
+        <path d="M-40 40 C-18 -40, 18 -40, 40 40 L40 90 L-40 90 Z" fill="#fff" opacity="0.95" transform="translate(0,-50)"/>
+        <circle id="head" cx="0" cy="-60" r="16" fill="#fff"/>
       </g>
-      <!-- sword (on right hand) -->
-      <g id="swordGroup" transform="translate(40,-20) rotate(-40)">
-        <rect x="-8" y="-6" width="140" height="12" rx="4" fill="#e6eef8" />
-        <rect x="118" y="-4" width="36" height="8" rx="3" fill="#ffd86b" />
+      <!-- long sword -->
+      <g id="sword" transform="translate(54,-18) rotate(-36)">
+        <rect x="-6" y="-6" width="180" height="12" rx="6" fill="#e9f3ff" stroke="#9fbfe0" stroke-width="1"/>
+        <rect x="178" y="-2" width="46" height="8" rx="4" fill="#ffd86b"/>
       </g>
-      <!-- flourish petals (hidden initially) -->
-      <g id="petals" opacity="0">
-        <circle cx="-10" cy="-10" r="6" fill="#ffd1e0" />
-        <circle cx="8" cy="-22" r="5" fill="#ffd1e0" />
-        <circle cx="-24" cy="-26" r="4" fill="#ff9fb3" />
+      <!-- anime face detail (appears during morph) -->
+      <g id="face" opacity="0">
+        <ellipse cx="0" cy="-60" rx="10" ry="12" fill="#fff8f2" />
+        <path d="M-6 -58 Q0 -52 6 -58" stroke="#0d1b27" stroke-width="0.9" fill="none"/>
+      </g>
+      <!-- cloak / anime lines -->
+      <g id="cloak" opacity="0.0">
+        <path d="M-34 34 C-10 -6, 10 -6, 34 34 L20 84 L-20 84 Z" fill="#ffdcb1" opacity="0.85"/>
       </g>
     </g>
 
-    <!-- king on right as stylized silhouette -->
-    <g id="enemy" transform="translate(860,320)">
+    <!-- Enemy king on right -->
+    <g id="king" transform="translate(880,320)">
       <g id="kingBody">
-        <rect x="-28" y="-80" width="56" height="120" rx="10" fill="#dbeefb" opacity="0.95"></rect>
-        <circle cx="0" cy="-100" r="18" fill="#c9e6ff"></circle>
-        <!-- crown (separate for flight) -->
-        <g id="kingCrown" transform="translate(-0,-128)">
-          <rect x="-24" y="0" width="48" height="12" rx="3" fill="#ffd86b"></rect>
-          <polygon points="-24,0 -12,-12 0,0 12,-12 24,0" fill="#ffb84d"></polygon>
+        <rect x="-28" y="-76" width="56" height="112" rx="10" fill="#dbeefb" opacity="0.98"/>
+        <circle cx="0" cy="-98" r="16" fill="#cfe8ff"/>
+        <g id="crown" transform="translate(-0,-126)">
+          <rect x="-22" y="0" width="44" height="10" rx="3" fill="#ffd86b"/>
+          <polygon points="-22,0 -10,-12 0,0 10,-12 22,0" fill="#ffbf45"/>
         </g>
       </g>
     </g>
 
-    <!-- impact circle (hidden) -->
-    <circle id="impact" cx="740" cy="300" r="0" fill="url(#impactGrad)" opacity="0.0"/>
-
-    <!-- finishing caption (hidden) -->
-    <g id="finalText" opacity="0" transform="translate(640,140)">
-      <text x="0" y="0" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-weight="700" font-size="42" fill="#fff">Мат</text>
-      <text x="0" y="36" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-size="18" fill="#dbeeff">Королева решила партию</text>
+    <!-- impact flare -->
+    <g id="impactGroup" opacity="0">
+      <circle id="flare" cx="730" cy="300" r="0" fill="#fff7e6" opacity="0.8" />
     </g>
 
+    <!-- final text -->
+    <g id="final" opacity="0">
+      <text x="640" y="120" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-weight="800" font-size="48" fill="#fff">Мат</text>
+      <text x="640" y="160" text-anchor="middle" font-family="Inter, Roboto" font-size="18" fill="#cfe8ff">Королева решила партию</text>
+    </g>
   </svg>
   `;
 
-  // timeline sequence (linear)
-  const svg = sceneEl.querySelector('svg');
-  const motionLines = svg.getElementById('motionLines');
+  // timeline parameters (ms)
+  const t0 = 350;   // idle
+  const t1 = 700;   // morph begin
+  const t2 = 1200;  // charge/speedlines appear
+  const t3 = 1500;  // swing/motion (impact)
+  const t4 = 2200;  // crown fly, king fall
+  const t5 = 3000;  // final
+
+  const svg = scene.querySelector('svg');
+  const speedlines = svg.getElementById('speedlines');
   const hero = svg.getElementById('hero');
-  const heroBody = svg.getElementById('heroBody');
-  const sword = svg.getElementById('swordGroup');
-  const petals = svg.getElementById('petals');
-  const enemy = svg.getElementById('enemy');
-  const impact = svg.getElementById('impact');
-  const finalText = svg.getElementById('finalText');
+  const sword = svg.getElementById('sword');
+  const face = svg.getElementById('face');
+  const cloak = svg.getElementById('cloak');
+  const king = svg.getElementById('king');
+  const crown = svg.getElementById('crown');
+  const flare = svg.getElementById('flare');
+  const impactGroup = svg.getElementById('impactGroup');
+  const final = svg.getElementById('final');
 
-  // reset transforms
-  motionLines.style.opacity = '0';
-  petals.style.opacity = '0';
-  impact.style.opacity = '0';
-  finalText.style.opacity = '0';
+  // idle gentle bob for hero
+  hero.animate([
+    { transform: 'translate(300px,360px) translateY(0px)' },
+    { transform: 'translate(300px,360px) translateY(-6px)' },
+    { transform: 'translate(300px,360px) translateY(0px)' }
+  ], { duration: 800, iterations: Infinity, easing: 'ease-in-out' });
 
-  // sequence timings (ms)
-  const t0 = 300;   // idle
-  const t1 = 700;   // anticipation
-  const t2 = 1200;  // swing start
-  const t3 = 1500;  // impact
-  const t4 = 2100;  // aftermath
-  const t5 = 3000;  // final caption
-
-  // 1) idle subtle bob
-  heroBody.animate([
-    { transform: 'translate(0,0)' },
-    { transform: 'translate(0,-6px)' },
-    { transform: 'translate(0,0)' }
-  ], { duration: 900, iterations: Infinity, easing: 'ease-in-out' });
-
-  // 2) anticipation: move hero slightly back and gather petals
+  // 1) morph: show face & cloak
   setTimeout(()=> {
-    hero.animate([{ transform: 'translate(360px,0) scale(1)'}, { transform: 'translate(360px,-6px) scale(1.02)'}], { duration: 420, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
-    petals.style.transition = 'opacity 360ms ease';
-    petals.style.opacity = '1';
+    face.style.transition = 'opacity 260ms ease';
+    face.style.opacity = '1';
+    cloak.style.transition = 'opacity 260ms ease';
+    cloak.style.opacity = '1';
   }, t1);
 
-  // 3) motion lines appear, sword swings
+  // 2) speedlines and lean forward
   setTimeout(()=> {
-    motionLines.style.transition = 'opacity 220ms linear';
-    motionLines.style.opacity = '1';
-    // sword swing: big rotation and translate
-    sword.animate([
-      { transform: 'translate(40px,-20px) rotate(-40deg)' },
-      { transform: 'translate(120px,-60px) rotate(16deg)' },
-      { transform: 'translate(140px,-80px) rotate(36deg)' }
-    ], { duration: 420, easing:'cubic-bezier(.15,.9,.25,1)', fill:'forwards' });
-
-    // petals scatter outward
-    petals.animate([
-      { transform: 'translate(0,0) scale(1)', opacity:1 },
-      { transform: 'translate(40px,-30px) scale(0.6)', opacity:0.0 }
-    ], { duration: 600, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+    speedlines.style.transition = 'opacity 180ms linear';
+    speedlines.style.opacity = '1.0';
+    // hero lean forward (translate slightly)
+    hero.animate([
+      { transform: 'translate(300px,360px) translateX(0px)'},
+      { transform: 'translate(300px,360px) translateX(18px) translateY(-10px) scale(1.02)'}
+    ], { duration: 380, fill:'forwards', easing:'cubic-bezier(.15,.9,.25,1)' });
   }, t2);
 
-  // 4) impact: bright flash circle and enemy reaction (fall)
+  // 3) sword swing: big movement across screen (weapon passes near camera)
   setTimeout(()=> {
-    impact.style.transition = 'opacity 120ms ease';
-    impact.style.opacity = '1';
-    impact.animate([{ r:0 }, { r:150 }], { duration: 420, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
-    // enemy falls: translate & rotate
-    enemy.animate([
-      { transform: 'translate(860px,320px) rotate(0deg)', opacity:1 },
-      { transform: 'translate(880px,420px) rotate(68deg)', opacity:0.95 }
-    ], { duration: 900, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+    sword.animate([
+      { transform: 'translate(54px,-18px) rotate(-36deg)' },
+      { transform: 'translate(220px,-70px) rotate(18deg)' },
+      { transform: 'translate(420px,-100px) rotate(36deg)' }
+    ], { duration: 420, easing:'cubic-bezier(.15,.9,.25,1)', fill:'forwards' });
 
-    // slight camera zoom (scale scene group)
-    svg.animate([
-      { transform: 'scale(1)' },
-      { transform: 'scale(1.03)' },
-      { transform: 'scale(1)' }
-    ], { duration: 1200, fill:'forwards', easing:'ease-out' });
+    // flash flare at impact point
+    impactGroup.style.transition='opacity 80ms linear';
+    impactGroup.style.opacity='1';
+    flare.animate([{ r:0, opacity:0.9 }, { r:160, opacity:0.95 }], { duration: 360, easing:'cubic-bezier(.2,.9,.2,1)', fill:'forwards' });
+
+    // camera shake: scale svg slightly
+    svg.animate([{ transform:'scale(1)'},{ transform:'scale(1.04)' },{ transform:'scale(1)' }], { duration: 700, fill:'forwards', easing:'ease-out' });
+
   }, t3);
 
-  // 5) fade motion lines, impact
+  // 4) crown flies, king falls
   setTimeout(()=> {
-    motionLines.style.opacity = '0';
-    impact.style.opacity = '0';
+    // move crown away from king
+    crown.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity:1 },
+      { transform: 'translate(110,-110) rotate(30deg)', opacity:0.0 }
+    ], { duration: 900, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+
+    // king falls downwards and rotates
+    king.animate([
+      { transform: 'translate(880px,320px) rotate(0deg)', opacity:1 },
+      { transform: 'translate(920px,460px) rotate(68deg)', opacity:0.95 }
+    ], { duration: 900, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+
+    // fade out speedlines
+    speedlines.style.transition='opacity 400ms linear';
+    speedlines.style.opacity='0';
+    impactGroup.style.transition='opacity 400ms linear';
+    impactGroup.style.opacity='0';
+
   }, t4);
 
-  // 6) final text appear
+  // 5) final text
   setTimeout(()=> {
-    finalText.style.transition = 'opacity 360ms ease';
-    finalText.style.opacity = '1';
+    final.style.transition='opacity 420ms ease';
+    final.style.opacity='1';
   }, t5);
 
-  // enable replay button
-  replayBtn.onclick = ()=> {
-    // hide and re-run
-    showScene();
-  };
+  // show "replay" control by clicking final area (or reset)
+  // make scene visible (in case hidden)
+  scene.style.opacity = 1;
 }
 
-// reset board to initial
+// reset behavior
 resetBtn.addEventListener('click', ()=>{
-  // reset board pieces to original position
-  boardPieces = {
+  // restore logical board
+  pieces = {
     'g6': {side:'w', type:'king'},
     'h6': {side:'w', type:'queen'},
     'g8': {side:'b', type:'king'},
     'g7': {side:'b', type:'pawn'}
   };
-  clearHighlights();
+  // show board
+  const boardWrap = document.getElementById('boardWrap');
+  boardWrap.style.display = '';
+  boardWrap.classList.remove('fade-out');
+  // clear scene
+  scene.innerHTML = '';
   makeBoard();
-  msg.textContent = 'Позиция сброшена.';
-  sceneEl.innerHTML = '';
-  replayBtn.style.visibility = 'hidden';
+  message.textContent = 'Позиция сброшена. Выбери ферзя ♕.';
+  state.selected = null; state.moving = false;
 });
 
-// initialization
+// init
 makeBoard();
 
 </script>
