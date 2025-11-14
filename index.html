@@ -3,464 +3,576 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Шахматная задача — мат королевой + анимация (без графики)</title>
+<title>Шахматная задача — мат королевой + аниме 2D-анимация</title>
 <style>
   :root{
-    --light:#f0d9b5;
-    --dark:#b58863;
-    --highlight: #ffd966;
-    --board-size: 560px;
-    --square-size: calc(var(--board-size) / 8);
-    --accent: #4a90e2;
+    --bg-1: #071029;
+    --bg-2: #061b2b;
+    --light: #f6ecd4;
+    --dark: #5a402b;
+    --accent: #ffb86b;
+    --accent-2: #7bdff6;
+    --board-max: 640px;
+    --board-gap: 18px;
   }
+  *{box-sizing:border-box}
   body{
-    font-family: Inter, Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
     margin:0;
-    background:linear-gradient(180deg,#0f172a 0%, #071029 100%);
-    color:#fff;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+    background: linear-gradient(180deg,var(--bg-1) 0%, var(--bg-2) 100%);
+    color:#e6eef8;
+    font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  }
+  .wrap{
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    gap:var(--board-gap);
+    align-items:flex-start;
+    justify-content:center;
+  }
+  /* LEFT: board column */
+  .left{
+    width: min(var(--board-max), 48%);
+    display:flex;
     flex-direction:column;
-    gap:18px;
-    padding:24px;
+    gap:12px;
+    align-items:center;
   }
-  h1{margin:0 0 6px 0; font-size:18px; font-weight:600;}
-  .note{font-size:13px; color:#cbd5e1; margin-bottom:6px;}
-  #boardWrap{width:var(--board-size);}
+  h1{font-size:18px;margin:0 0 4px 0}
+  .subtitle{font-size:13px;color:#a8c0d6;margin:0}
+  /* board container keeps square layout */
+  .board-wrap{
+    width:100%;
+    border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+    padding:14px;
+    box-shadow: 0 14px 40px rgba(3,8,20,0.6);
+  }
   .board{
-    width:var(--board-size);
-    height:var(--board-size);
+    width:100%;
+    --cells:8;
     display:grid;
-    grid-template-columns:repeat(8,1fr);
-    box-shadow:0 10px 30px rgba(2,6,23,0.7);
-    border-radius:10px;
+    grid-template-columns: repeat(8,1fr);
+    gap:0;
+    border-radius:8px;
     overflow:hidden;
-    position:relative;
-    transform-origin:center;
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));
+    /* to keep squares proportional: use pseudo-element for width control */
   }
-  .square{
+  /* each cell uses aspect-ratio for perfect squares (modern browsers) */
+  .cell{
+    position:relative;
     width:100%;
-    height:100%;
+    aspect-ratio: 1 / 1;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:26px;
-    user-select:none;
     cursor:pointer;
-    transition: background 180ms, transform 130ms;
-    position:relative;
+    transition: background 140ms ease, transform 140ms ease;
   }
-  .square.light{ background: var(--light); color:#111; }
-  .square.dark{ background: var(--dark); color:#111; }
-  .square.highlight{ outline: 4px solid rgba(255,217,102,0.55); box-sizing:border-box; }
-  .piece{
-    font-size:36px;
-    line-height:1;
-    transform: translateZ(0);
+  .cell.light{ background: var(--light); }
+  .cell.dark{ background: var(--dark); }
+  .cell.highlight{ outline: 4px solid rgba(255,184,103,0.45); box-sizing:border-box; }
+  .cell.bad{ animation: shake 360ms; }
+  @keyframes shake {
+    0%{ transform: translateX(0) } 25%{ transform: translateX(-6px) } 50%{ transform: translateX(6px) } 75%{ transform: translateX(-4px) } 100%{ transform: translateX(0) }
   }
-  .small-info{
-    font-size:13px;
-    color:#d1d5db;
-    margin-top:8px;
-    text-align:center;
+
+  /* svg piece styling */
+  .piece-svg{
+    width:64%;
+    height:64%;
+    display:block;
+    pointer-events:none;
+    filter: drop-shadow(0 6px 10px rgba(3,8,20,0.35));
+    transition: transform 170ms ease;
   }
-  /* animation area */
-  #scene{
-    width:640px;
-    max-width:95vw;
-    height:360px;
-    background: linear-gradient(180deg, #021428 0%, #02111b 100%);
-    border-radius:12px;
-    box-shadow: 0 10px 40px rgba(2,6,23,0.7);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    position:relative;
-    display:none; /* hidden until triggered */
-  }
-  /* simple silhouettes */
-  .stage{
-    width:100%;
-    height:100%;
-    position:relative;
-  }
-  svg{ width:100%; height:100%; display:block; }
-  /* sword swing */
-  @keyframes swing {
-    0% { transform-origin: 60% 20%; transform: rotate(-40deg); }
-    50% { transform: rotate(15deg); }
-    100% { transform: rotate(-10deg); }
-  }
-  @keyframes swoop {
-    0% { transform: translateX(-80px) rotate(0deg); opacity:1; }
-    70% { transform: translateX(0px) rotate(6deg); opacity:1; }
-    100% { transform: translateX(30px) rotate(12deg); opacity:0; }
-  }
-  @keyframes fall {
-    0% { transform: translateY(0) rotate(0deg); opacity:1; }
-    100% { transform: translateY(120px) rotate(90deg); opacity:0.9; }
-  }
-  /* helper UI */
-  #msg{
-    margin-top:10px;
-    font-size:14px;
-    color:#e2e8f0;
-  }
+  .piece-container{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+
+  .controls{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:6px; }
   .btn{
-    background:linear-gradient(180deg,#2563eb,#1e40af);
+    background:linear-gradient(180deg,#2b74ff,#1b4fd6);
     color:white;
     border:none;
     padding:8px 12px;
     border-radius:8px;
     cursor:pointer;
     font-weight:600;
+    font-size:13px;
   }
-  .muted{ color:#94a3b8; font-size:13px; }
-  /* subtle feedback */
-  .shake { animation: shake 430ms; }
-  @keyframes shake {
-    0%{ transform: translateX(0) }
-    20%{ transform: translateX(-6px) }
-    40%{ transform: translateX(6px) }
-    60%{ transform: translateX(-4px) }
-    80%{ transform: translateX(4px) }
-    100%{ transform: translateX(0) }
+  .muted{ color:#a8c0d6; font-size:13px }
+
+  /* RIGHT: animation panel */
+  .right{
+    width: min(520px, 48%);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:center;
   }
+  .scene {
+    width:100%;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(180deg,#041025 0%, #020814 100%);
+    border-radius:12px;
+    overflow:hidden;
+    position:relative;
+    box-shadow: 0 20px 50px rgba(2,6,20,0.6);
+  }
+  .scene svg{ width:100%; height:100%; display:block; }
+
+  /* anime-style effects */
+  .flash {
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    mix-blend-mode: screen;
+  }
+  .msg-area{ text-align:center; font-size:14px; color:#cfe8ff; min-height:28px }
+
+  /* responsive tweaks */
+  @media (max-width:900px){
+    .wrap{ flex-direction:column; align-items:center; }
+    .left, .right{ width:100% }
+  }
+
 </style>
 </head>
 <body>
-  <div style="text-align:center;">
-    <h1>Шахматная задачa — мат королевой в 1 ход</h1>
-    <div class="note">Кликни по белой ♕ (королеве), затем по клетке, где ставится мат. После — запускается стилизованная 2D-анимация (без кровавых деталей).</div>
-  </div>
+  <div class="wrap">
+    <div class="left">
+      <h1>Мат королевой в 1 ход — задача</h1>
+      <p class="subtitle">Кликни по белой королеве ♕ (выделится), затем по клетке, где ставится мат. Неверный ход — мягкая подсказка.</p>
 
-  <div id="boardWrap">
-    <div id="board" class="board" aria-hidden="false"></div>
-    <div class="small-info">Позиция: <span class="muted">Белые: Kg1, Qh6. Чёрные: Kg8, pg7. Ход белых.</span></div>
-    <div id="msg"></div>
-  </div>
+      <div class="board-wrap" id="boardWrap">
+        <div id="board" class="board" role="grid" aria-label="Шахматная доска"></div>
+        <div class="controls">
+          <button id="resetBtn" class="btn">Сбросить</button>
+          <div class="muted">Позиция: Белые: Kg6, Qh6. Чёрные: Kg8, pg7. Ход белых.</div>
+        </div>
+      </div>
+      <div class="msg-area" id="message"></div>
+    </div>
 
-  <div id="scene">
-    <div class="stage" id="stageContainer">
-      <!-- SVG will be injected here -->
+    <div class="right">
+      <h1 style="font-size:16px;margin:0">Аниме-стилизованная 2D-сцена</h1>
+      <p class="subtitle" style="margin-bottom:6px">Плавная линейная анимация: превращение → взмах → эффект и финал (без насилия).</p>
+      <div class="scene" id="scene" aria-hidden="true">
+        <!-- SVG injected dynamically -->
+      </div>
+      <div style="display:flex; gap:8px; width:100%; justify-content:center;">
+        <button id="replayBtn" class="btn" style="visibility:hidden">Повторить анимацию</button>
+      </div>
     </div>
   </div>
 
 <script>
-/* ---------- Простая шахматная доска без библиотек ----------
-   Позиция: FEN: "6k1/6p1/7Q/8/8/8/8/6K1 w - - 0 1"
-   Белая королева на h6 (хотим Qxg7#). Мы намеренно разрешаем выбор только королевы.
------------------------------------------------------------- */
-
-const BOARD = document.getElementById('board');
-const MSG = document.getElementById('msg');
-const SCENE = document.getElementById('scene');
-const STAGE = document.getElementById('stageContainer');
+/* --------------------------
+  Правильная шахматная позиция (легальная):
+  Белые: Kg6, Qh6
+  Чёрные: Kg8, pg7
+  Ход белых. Мат: Qxg7#
+  Почему нельзя съесть: король на g8 не может взять ферзя на g7, потому что ферзь защищён белым королём на g6.
+---------------------------- */
 
 const files = ['a','b','c','d','e','f','g','h'];
 const ranks = [8,7,6,5,4,3,2,1];
+const boardEl = document.getElementById('board');
+const msg = document.getElementById('message');
+const sceneEl = document.getElementById('scene');
+const replayBtn = document.getElementById('replayBtn');
+const resetBtn = document.getElementById('resetBtn');
 
-// piece placements: use unicode
-// white queen at h6, white king g1; black king g8, black pawn g7
-const pieces = {
-  'h6': '♕', // white queen
-  'g1': '♔', // white king
-  'g8': '♚', // black king
-  'g7': '♟'  // black pawn
+let state = {
+  selected: null,
+  moving: false
 };
 
-let selected = null;
-let moving = false;
-const correctTarget = 'g7';
-const queenSquare = 'h6';
+// pieces (using lightweight SVG icons below)
+let boardPieces = {
+  'g6': {side:'w', type:'king'},   // white king
+  'h6': {side:'w', type:'queen'},  // white queen (selectable)
+  'g8': {side:'b', type:'king'},   // black king
+  'g7': {side:'b', type:'pawn'}    // black pawn (to be captured)
+};
 
-// build grid
+const mateFrom = 'h6';
+const mateTo = 'g7';
+
 function makeBoard(){
-  BOARD.innerHTML = '';
+  boardEl.innerHTML = '';
   for(let r=0;r<8;r++){
     for(let f=0;f<8;f++){
-      const sq = files[f]+ranks[r];
+      const sq = files[f] + ranks[r];
       const div = document.createElement('div');
-      div.className = 'square ' + (((f + r) % 2 === 0) ? 'light' : 'dark');
+      div.className = 'cell ' + (((f + r) % 2 === 0) ? 'light' : 'dark');
       div.dataset.square = sq;
-      div.id = 'sq-'+sq;
-      div.addEventListener('click', onSquareClick);
+      div.setAttribute('role','gridcell');
+      div.addEventListener('click', onCellClick);
       // place piece if exists
-      if(pieces[sq]){
-        const span = document.createElement('div');
-        span.className = 'piece';
-        span.textContent = pieces[sq];
-        span.dataset.piece = pieces[sq];
-        span.dataset.square = sq;
-        // only queen should be selectable
-        if(sq === queenSquare){
-          span.style.cursor = 'pointer';
-          span.title = 'Кликни, чтобы выбрать королеву';
-          span.addEventListener('click', onPieceClick);
+      if(boardPieces[sq]){
+        const cont = document.createElement('div');
+        cont.className = 'piece-container';
+        cont.innerHTML = pieceSVG(boardPieces[sq].side, boardPieces[sq].type);
+        // ensure queen selectable only on mateFrom
+        if(sq === mateFrom){
+          cont.style.cursor = 'pointer';
+          cont.title = 'Кликни, чтобы выбрать королеву';
+          cont.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            selectQueen(sq);
+          });
         } else {
-          span.style.cursor = 'default';
+          cont.style.pointerEvents = 'none'; // non-selectable
         }
-        div.appendChild(span);
+        div.appendChild(cont);
       }
-      BOARD.appendChild(div);
+      boardEl.appendChild(div);
     }
   }
+  msg.textContent = 'Выбери ферзя (♕) и затем целевую клетку матa.';
 }
-function onPieceClick(e){
-  e.stopPropagation();
-  const sq = e.currentTarget.dataset.square;
-  if(sq !== queenSquare){ return; }
-  selectQueen();
+
+// SVG piece factory (stylized, vector, neat)
+function pieceSVG(side, type){
+  // use monochrome vectors: white pieces are light fill, black pieces are dark stroke
+  const lightFill = side === 'w' ? '#ffffff' : '#0a1320';
+  const darkFill = side === 'w' ? '#f1c97d' : '#8eaec8';
+  const stroke = side === 'w' ? '#d1d5db' : '#0b2230';
+  if(type === 'king'){
+    return `
+      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(2,2)">
+          <rect x="17" y="1" width="6" height="8" rx="1" fill="${lightFill}" stroke="${stroke}" stroke-width="0.6"/>
+          <rect x="6" y="28" width="32" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
+          <path d="M9 28 C18 12, 27 12, 36 28" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
+          <circle cx="24" cy="10" r="4" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
+        </g>
+      </svg>
+    `;
+  } else if(type === 'queen'){
+    // more decorative crown for queen
+    return `
+      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(2,2)">
+          <path d="M6 30 C18 12, 27 12, 39 30 L6 30 Z" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
+          <circle cx="10" cy="14" r="3.2" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
+          <circle cx="24" cy="10" r="3.6" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
+          <circle cx="38" cy="14" r="3.2" fill="${darkFill}" stroke="${stroke}" stroke-width="0.6"/>
+          <rect x="12" y="28" width="18" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
+        </g>
+      </svg>
+    `;
+  } else if(type === 'pawn'){
+    return `
+      <svg class="piece-svg" viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(2,2)">
+          <circle cx="22" cy="14" r="6" fill="${lightFill}" stroke="${stroke}" stroke-width="0.8"/>
+          <rect x="12" y="26" width="20" height="8" rx="3" fill="${lightFill}" stroke="${stroke}" stroke-width="0.9"/>
+        </g>
+      </svg>
+    `;
+  }
+  return '';
 }
-function selectQueen(){
-  // highlight queen and target
+
+/* Interaction */
+function selectQueen(square){
+  if(state.moving) return;
+  // highlight queen and the only correct target
   clearHighlights();
-  selected = queenSquare;
-  moving = true;
-  const qEl = document.getElementById('sq-'+queenSquare);
-  qEl.classList.add('highlight');
-  const tEl = document.getElementById('sq-'+correctTarget);
-  tEl.classList.add('highlight');
-  MSG.textContent = 'Вы выбрали королеву. Кликни по выделенной клетке, чтобы поставить мат.';
+  const fromEl = document.querySelector(`[data-square="${square}"]`);
+  fromEl.classList.add('highlight');
+  const toEl = document.querySelector(`[data-square="${mateTo}"]`);
+  toEl.classList.add('highlight');
+  state.selected = square;
+  state.moving = true;
+  msg.textContent = 'Королева выбрана. Кликни по подсвеченной клетке, чтобы поставить мат.';
 }
+
 function clearHighlights(){
-  document.querySelectorAll('.square.highlight').forEach(s=>s.classList.remove('highlight'));
-  selected = null; moving = false;
+  document.querySelectorAll('.cell.highlight').forEach(n=>n.classList.remove('highlight'));
+  state.selected = null; state.moving = false;
 }
-function onSquareClick(e){
+
+function onCellClick(e){
   const sq = e.currentTarget.dataset.square;
-  if(!moving){
-    shake(MSG);
-    MSG.textContent = 'Сначала выбери королеву (♕).';
+  if(!state.moving){
+    // gentle hint
+    e.currentTarget.classList.add('bad');
+    setTimeout(()=>e.currentTarget.classList.remove('bad'),360);
+    msg.textContent = 'Сначала выбери королеву (♕) — она подсвечена слева.';
     return;
   }
-  // only allow clicking the designated target
-  if(sq === correctTarget && selected === queenSquare){
-    performQueenMove(queenSquare, correctTarget);
+  if(state.selected !== mateFrom){
+    msg.textContent = 'Выбрана не та фигура, сбросьте выбор.';
+    return;
+  }
+  if(sq === mateTo){
+    // perform animated move and then launch scene
+    msg.textContent = 'Ход выполнен — мат. Запуск анимации.';
+    animateQueenMove(mateFrom, mateTo, () => {
+      // update internal board
+      delete boardPieces[mateFrom];
+      boardPieces[mateTo] = {side:'w', type:'queen'};
+      delete boardPieces[mateTo === 'g7' ? 'g7' : mateTo]; // ensure pawn removed (just to be safe)
+      // remove captured pawn
+      if(boardPieces['g7'] && boardPieces['g7'].side === 'b' && boardPieces['g7'].type === 'pawn'){
+        delete boardPieces['g7'];
+      }
+      // final render and show animation scene
+      setTimeout(()=>{
+        makeBoard();
+        showScene();
+      }, 350);
+    });
   } else {
-    // incorrect square -> feedback
-    MSG.textContent = 'Это не тот ход. Попробуй снова (клик на выделенную клетку).';
-    shake(document.getElementById('boardWrap'));
-    // keep highlights
+    // wrong target
+    msg.textContent = 'Это не тот ход. Попробуйте кликнуть по подсвеченной клетке.';
+    const targetEl = document.querySelector(`[data-square="${sq}"]`);
+    targetEl.classList.add('bad');
+    setTimeout(()=>targetEl.classList.remove('bad'),360);
   }
 }
-function performQueenMove(from, to){
-  MSG.textContent = 'Ход выполнен — мат. Запуск анимации...';
-  // animate queen moving: clone piece, absolute positioning
-  const fromEl = document.getElementById('sq-'+from);
-  const toEl = document.getElementById('sq-'+to);
-  const piece = fromEl.querySelector('.piece');
-  if(!piece){ finishAndShowScene(); return; }
-  const clone = piece.cloneNode(true);
+
+function animateQueenMove(from, to, cb){
+  // visual clone moving from->to
+  const fromEl = document.querySelector(`[data-square="${from}"]`);
+  const toEl = document.querySelector(`[data-square="${to}"]`);
+  const pieceNode = fromEl.querySelector('.piece-container');
+  if(!pieceNode){ cb(); return; }
+  const clone = pieceNode.cloneNode(true);
   clone.style.position = 'absolute';
-  const boardRect = BOARD.getBoundingClientRect();
-  const fromRect = fromEl.getBoundingClientRect();
-  clone.style.left = (fromRect.left - boardRect.left) + 'px';
-  clone.style.top  = (fromRect.top  - boardRect.top) + 'px';
-  clone.style.width = fromRect.width + 'px';
-  clone.style.height = fromRect.height + 'px';
-  clone.style.display = 'flex';
-  clone.style.alignItems = 'center';
-  clone.style.justifyContent = 'center';
-  clone.style.fontSize = '36px';
-  clone.style.transition = 'all 560ms cubic-bezier(.2,.9,.2,1)';
-  BOARD.appendChild(clone);
-  // remove original piece from fromEl
-  piece.remove();
-  // compute target
+  const boardRect = boardEl.getBoundingClientRect();
+  const fr = fromEl.getBoundingClientRect();
+  clone.style.left = (fr.left - boardRect.left) + 'px';
+  clone.style.top  = (fr.top - boardRect.top) + 'px';
+  clone.style.width = fr.width + 'px';
+  clone.style.height= fr.height + 'px';
+  clone.style.zIndex = 999;
+  clone.style.transition = 'all 420ms cubic-bezier(.2,.95,.2,1)';
+  boardEl.appendChild(clone);
+  // remove original piece visually
+  const original = fromEl.querySelector('.piece-container');
+  if(original) original.remove();
+  // move
   const toRect = toEl.getBoundingClientRect();
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(()=> {
     clone.style.left = (toRect.left - boardRect.left) + 'px';
-    clone.style.top  = (toRect.top  - boardRect.top) + 'px';
+    clone.style.top  = (toRect.top - boardRect.top) + 'px';
+    clone.style.transform = 'scale(1.02)';
   });
-  // also remove captured pawn (black pawn on g7) visually
-  const captured = toEl.querySelector('.piece');
-  if(captured) captured.remove();
-  // after animation
-  setTimeout(()=>{
-    clone.remove();
-    // place queen at destination
-    const qSpan = document.createElement('div');
-    qSpan.className = 'piece';
-    qSpan.textContent = '♕';
-    toEl.appendChild(qSpan);
-    // small pause then switch to scene
-    setTimeout(finishAndShowScene, 650);
-  }, 700);
-}
-function finishAndShowScene(){
-  // hide board
-  document.getElementById('boardWrap').style.display = 'none';
-  // show scene
-  SCENE.style.display = 'block';
-  runSceneAnimation();
+  setTimeout(()=>{ clone.remove(); if(cb) cb(); }, 460);
 }
 
-/* ---------- Simple stylized non-graphic animation in SVG ----------
-   - Фигура женщины (силуэт) делает взмах мечом (без крови)
-   - Король-символ отпускается — падает, корона улетает
-   - Линейная хронология: подготовка -> взмах -> падение -> финал
------------------------------------------------------------- */
+/* ----------- Scene: anime-style linear 2D animation (no gore) ---------- */
+function showScene(){
+  sceneEl.innerHTML = ''; // clear
+  sceneEl.setAttribute('aria-hidden','false');
+  replayBtn.style.visibility = 'visible';
+  // create SVG anime scene
+  sceneEl.innerHTML = `
+  <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bgGrad" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#08172a"/>
+        <stop offset="1" stop-color="#03060b"/>
+      </linearGradient>
+      <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="6" />
+      </filter>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <radialGradient id="impactGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#fff8d6" stop-opacity="0.95"/>
+        <stop offset="50%" stop-color="#ffd2a3" stop-opacity="0.6"/>
+        <stop offset="100%" stop-color="#ff8fb3" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
 
-function runSceneAnimation(){
-  STAGE.innerHTML = `
-<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0" stop-color="#06263d"/>
-      <stop offset="1" stop-color="#02111b"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feColorMatrix in="blur" type="matrix"
-        values="0 0 0 0 0.12
-                0 0 0 0 0.22
-                0 0 0 0 0.30
-                0 0 0 0.6 0"/>
-    </filter>
-  </defs>
+    <rect width="100%" height="100%" fill="url(#bgGrad)"/>
 
-  <rect width="100%" height="100%" fill="url(#bg)"/>
-  <!-- stylized battleground -->
-  <g id="ground" transform="translate(0,540)">
-    <ellipse cx="640" cy="90" rx="520" ry="90" fill="rgba(0,0,0,0.25)"/>
-  </g>
-
-  <!-- KING silhouette on the right -->
-  <g id="kingGroup" transform="translate(860,300)" opacity="1">
-    <g id="kingBody" transform="translate(0,0)">
-      <rect x="-28" y="-80" width="56" height="120" rx="10" fill="#e2e8f0" opacity="0.95"></rect>
-      <circle cx="0" cy="-100" r="18" fill="#cbd5e1"></circle>
-      <!-- crown -->
-      <g id="crown" transform="translate(-0,-128)">
-        <rect x="-24" y="0" width="48" height="12" rx="3" fill="#ffd166"></rect>
-        <polygon points="-24,0 -12,-12 0,0 12,-12 24,0" fill="#ffb84d"></polygon>
+    <!-- stylized stage floor -->
+    <g transform="translate(0,520)">
+      <ellipse cx="640" cy="100" rx="520" ry="80" fill="rgba(0,0,0,0.35)"/>
+      <g id="floorLines" opacity="0.12" transform="translate(0,0)">
+        <rect x="140" y="50" width="1000" height="2" fill="#9ccbe7"/>
+        <rect x="100" y="70" width="1080" height="2" fill="#6fb8e6"/>
       </g>
     </g>
-  </g>
 
-  <!-- WOMAN silhouette on the left with sword group -->
-  <g id="womanGroup" transform="translate(360,320)">
-    <g id="womanBody" transform="translate(0,0)">
-      <rect x="-26" y="-84" width="52" height="108" rx="12" fill="#ffffff" opacity="0.95"></rect>
-      <circle cx="0" cy="-106" r="16" fill="#ffffff"></circle>
+    <!-- motion lines (hidden initially) -->
+    <g id="motionLines" opacity="0">
+      <path d="M420 320 C540 240, 720 240, 860 320" stroke="#ffd89b" stroke-width="6" stroke-linecap="round" fill="none" stroke-linejoin="round" stroke-opacity="0.85"/>
+      <path d="M440 340 C560 260, 700 260, 820 340" stroke="#ff9fb3" stroke-width="4" stroke-linecap="round" fill="none" stroke-opacity="0.7"/>
     </g>
-    <g id="swordPivot" transform="translate(18,-40)">
-      <!-- sword -->
-      <g id="sword" transform="rotate(-40)">
-        <rect x="-6" y="-6" width="120" height="12" rx="4" fill="#cbd5e1"/>
-        <rect x="110" y="-2" width="40" height="6" rx="3" fill="#ffd166"/>
+
+    <!-- queen -> girl morph (left) -->
+    <g id="hero" transform="translate(360,360)">
+      <!-- base silhouette (faint) -->
+      <g id="heroBody" transform="translate(0,0)">
+        <path id="heroShadow" d="M-28 20 C-12 -40, 12 -40, 28 20 L28 68 L-28 68 Z" fill="#ffffff" opacity="0.95" transform="translate(0,-50) scale(0.95)"/>
+        <circle id="heroHead" cx="0" cy="-70" r="16" fill="#fff" opacity="0.98"/>
+      </g>
+      <!-- sword (on right hand) -->
+      <g id="swordGroup" transform="translate(40,-20) rotate(-40)">
+        <rect x="-8" y="-6" width="140" height="12" rx="4" fill="#e6eef8" />
+        <rect x="118" y="-4" width="36" height="8" rx="3" fill="#ffd86b" />
+      </g>
+      <!-- flourish petals (hidden initially) -->
+      <g id="petals" opacity="0">
+        <circle cx="-10" cy="-10" r="6" fill="#ffd1e0" />
+        <circle cx="8" cy="-22" r="5" fill="#ffd1e0" />
+        <circle cx="-24" cy="-26" r="4" fill="#ff9fb3" />
       </g>
     </g>
-  </g>
 
-  <!-- some ambient particles (glow line) -->
-  <g id="sparkles" opacity="0.0">
-    <circle cx="520" cy="260" r="4" fill="#ffd966" opacity="0.0"/>
-    <circle cx="700" cy="180" r="3" fill="#ffd966" opacity="0.0"/>
-  </g>
+    <!-- king on right as stylized silhouette -->
+    <g id="enemy" transform="translate(860,320)">
+      <g id="kingBody">
+        <rect x="-28" y="-80" width="56" height="120" rx="10" fill="#dbeefb" opacity="0.95"></rect>
+        <circle cx="0" cy="-100" r="18" fill="#c9e6ff"></circle>
+        <!-- crown (separate for flight) -->
+        <g id="kingCrown" transform="translate(-0,-128)">
+          <rect x="-24" y="0" width="48" height="12" rx="3" fill="#ffd86b"></rect>
+          <polygon points="-24,0 -12,-12 0,0 12,-12 24,0" fill="#ffb84d"></polygon>
+        </g>
+      </g>
+    </g>
 
-</svg>
+    <!-- impact circle (hidden) -->
+    <circle id="impact" cx="740" cy="300" r="0" fill="url(#impactGrad)" opacity="0.0"/>
+
+    <!-- finishing caption (hidden) -->
+    <g id="finalText" opacity="0" transform="translate(640,140)">
+      <text x="0" y="0" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-weight="700" font-size="42" fill="#fff">Мат</text>
+      <text x="0" y="36" text-anchor="middle" font-family="Inter, Roboto, sans-serif" font-size="18" fill="#dbeeff">Королева решила партию</text>
+    </g>
+
+  </svg>
   `;
 
-  const svg = STAGE.querySelector('svg');
-  const sword = svg.getElementById('sword');
-  const swordPivot = svg.getElementById('swordPivot');
-  const king = svg.getElementById('kingGroup');
-  const kingBody = svg.getElementById('kingBody');
-  const crown = svg.getElementById('crown');
-  const sparkles = svg.getElementById('sparkles');
+  // timeline sequence (linear)
+  const svg = sceneEl.querySelector('svg');
+  const motionLines = svg.getElementById('motionLines');
+  const hero = svg.getElementById('hero');
+  const heroBody = svg.getElementById('heroBody');
+  const sword = svg.getElementById('swordGroup');
+  const petals = svg.getElementById('petals');
+  const enemy = svg.getElementById('enemy');
+  const impact = svg.getElementById('impact');
+  const finalText = svg.getElementById('finalText');
 
-  // Prepare CSS animations by adding style element to svg (for cross-browser)
-  const style = document.createElementNS('http://www.w3.org/2000/svg','style');
-  style.textContent = `
-    @keyframes swingHands {
-      0% { transform: rotate(-40deg); }
-      35% { transform: rotate(20deg); }
-      55% { transform: rotate(8deg); }
-      100% { transform: rotate(0deg); }
-    }
-    @keyframes kingFall {
-      0% { transform: translateY(0) rotate(0deg); opacity:1; }
-      100% { transform: translateY(140px) rotate(80deg); opacity:0.9; }
-    }
-    @keyframes crownFly {
-      0% { transform: translate(0px,0px) rotate(0deg); opacity:1; }
-      80% { transform: translate(80px,-70px) rotate(20deg); opacity:1; }
-      100% { transform: translate(120px,-140px) rotate(30deg); opacity:0; }
-    }
-  `;
-  svg.appendChild(style);
+  // reset transforms
+  motionLines.style.opacity = '0';
+  petals.style.opacity = '0';
+  impact.style.opacity = '0';
+  finalText.style.opacity = '0';
 
-  // animate sequence using timeouts
-  // 1) small glow, pause
-  setTimeout(()=>{ sparkles.style.opacity = '1'; }, 300);
+  // sequence timings (ms)
+  const t0 = 300;   // idle
+  const t1 = 700;   // anticipation
+  const t2 = 1200;  // swing start
+  const t3 = 1500;  // impact
+  const t4 = 2100;  // aftermath
+  const t5 = 3000;  // final caption
 
-  // 2) anticipation (slight lean)
-  setTimeout(()=>{ svg.getElementById('womanBody').setAttribute('transform','translate(0,-6)'); }, 650);
+  // 1) idle subtle bob
+  heroBody.animate([
+    { transform: 'translate(0,0)' },
+    { transform: 'translate(0,-6px)' },
+    { transform: 'translate(0,0)' }
+  ], { duration: 900, iterations: Infinity, easing: 'ease-in-out' });
 
-  // 3) swing (keyframe applied to sword group)
-  setTimeout(()=>{
-    sword.style.transformOrigin = '20px 6px';
-    sword.style.transformBox = 'fill-box';
-    sword.style.animation = 'swingHands 700ms cubic-bezier(.2,.9,.2,1) forwards';
-    // also small flash
-    sparkles.style.opacity = '0.0';
-  }, 1000);
+  // 2) anticipation: move hero slightly back and gather petals
+  setTimeout(()=> {
+    hero.animate([{ transform: 'translate(360px,0) scale(1)'}, { transform: 'translate(360px,-6px) scale(1.02)'}], { duration: 420, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+    petals.style.transition = 'opacity 360ms ease';
+    petals.style.opacity = '1';
+  }, t1);
 
-  // 4) at swing moment -> king falls and crown flies
-  setTimeout(()=>{
-    king.style.transition = 'transform 900ms cubic-bezier(.2,.9,.2,1), opacity 900ms';
-    king.style.transformOrigin = '50% 0%';
-    king.style.animation = 'kingFall 900ms forwards';
-    crown.style.transformOrigin = '50% 50%';
-    crown.style.animation = 'crownFly 900ms forwards';
-  }, 1400);
+  // 3) motion lines appear, sword swings
+  setTimeout(()=> {
+    motionLines.style.transition = 'opacity 220ms linear';
+    motionLines.style.opacity = '1';
+    // sword swing: big rotation and translate
+    sword.animate([
+      { transform: 'translate(40px,-20px) rotate(-40deg)' },
+      { transform: 'translate(120px,-60px) rotate(16deg)' },
+      { transform: 'translate(140px,-80px) rotate(36deg)' }
+    ], { duration: 420, easing:'cubic-bezier(.15,.9,.25,1)', fill:'forwards' });
 
-  // 5) final pose: camera focus & fade to message
-  setTimeout(()=>{
-    // subtle fade-out and show final text
-    const overlay = document.createElement('div');
-    overlay.style.position = 'absolute';
-    overlay.style.left='0'; overlay.style.top='0'; overlay.style.width='100%'; overlay.style.height='100%';
-    overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center';
-    overlay.style.pointerEvents='none';
-    overlay.innerHTML = '<div style="text-align:center;color:#e6eef8;"><div style="font-size:32px;font-weight:700;margin-bottom:8px;">Мат!</div><div style="font-size:16px;opacity:0.9;">Королева победила.</div></div>';
-    SCENE.appendChild(overlay);
-  }, 2400);
+    // petals scatter outward
+    petals.animate([
+      { transform: 'translate(0,0) scale(1)', opacity:1 },
+      { transform: 'translate(40px,-30px) scale(0.6)', opacity:0.0 }
+    ], { duration: 600, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+  }, t2);
 
-  // optional loop end: after some seconds, show a "Повторить / Вернуться" button
-  setTimeout(()=>{
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.textContent = 'Повторить (на доске)';
-    btn.style.position = 'absolute';
-    btn.style.right = '18px';
-    btn.style.bottom = '18px';
-    btn.addEventListener('click', ()=>{
-      // reset page: hide scene, show board again with fresh setup
-      SCENE.style.display = 'none';
-      document.getElementById('boardWrap').style.display = 'block';
-      MSG.textContent = '';
-      clearHighlights();
-      makeBoard();
-      btn.remove();
-    });
-    SCENE.appendChild(btn);
-  }, 3600);
+  // 4) impact: bright flash circle and enemy reaction (fall)
+  setTimeout(()=> {
+    impact.style.transition = 'opacity 120ms ease';
+    impact.style.opacity = '1';
+    impact.animate([{ r:0 }, { r:150 }], { duration: 420, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+    // enemy falls: translate & rotate
+    enemy.animate([
+      { transform: 'translate(860px,320px) rotate(0deg)', opacity:1 },
+      { transform: 'translate(880px,420px) rotate(68deg)', opacity:0.95 }
+    ], { duration: 900, fill:'forwards', easing:'cubic-bezier(.2,.9,.2,1)' });
+
+    // slight camera zoom (scale scene group)
+    svg.animate([
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.03)' },
+      { transform: 'scale(1)' }
+    ], { duration: 1200, fill:'forwards', easing:'ease-out' });
+  }, t3);
+
+  // 5) fade motion lines, impact
+  setTimeout(()=> {
+    motionLines.style.opacity = '0';
+    impact.style.opacity = '0';
+  }, t4);
+
+  // 6) final text appear
+  setTimeout(()=> {
+    finalText.style.transition = 'opacity 360ms ease';
+    finalText.style.opacity = '1';
+  }, t5);
+
+  // enable replay button
+  replayBtn.onclick = ()=> {
+    // hide and re-run
+    showScene();
+  };
 }
 
-/* small UI helpers */
-function shake(el){
-  el.classList.add('shake');
-  setTimeout(()=>el.classList.remove('shake'),450);
-}
+// reset board to initial
+resetBtn.addEventListener('click', ()=>{
+  // reset board pieces to original position
+  boardPieces = {
+    'g6': {side:'w', type:'king'},
+    'h6': {side:'w', type:'queen'},
+    'g8': {side:'b', type:'king'},
+    'g7': {side:'b', type:'pawn'}
+  };
+  clearHighlights();
+  makeBoard();
+  msg.textContent = 'Позиция сброшена.';
+  sceneEl.innerHTML = '';
+  replayBtn.style.visibility = 'hidden';
+});
 
-/* initialize */
+// initialization
 makeBoard();
 
 </script>
