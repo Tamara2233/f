@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Логистика будущего</title>
   <style>
-    /* Общие стили */
     body {
       margin: 0;
       font-family: 'Arial', sans-serif;
@@ -98,7 +97,6 @@
       background: #e0a800;
     }
 
-    /* Адаптив */
     @media(max-width: 768px) {
       header h1 {
         font-size: 2rem;
@@ -182,56 +180,72 @@
 
     const fireworks = [];
 
-    class Firework {
-      constructor(x, y) {
+    class Particle {
+      constructor(x, y, color) {
         this.x = x;
         this.y = y;
+        this.radius = Math.random() * 3 + 2;
+        this.color = color;
+        this.speed = Math.random() * 6 + 2;
+        this.angle = Math.random() * 2 * Math.PI;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.015 + 0.01;
+      }
+
+      update() {
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        this.alpha -= this.decay;
+      }
+
+      draw() {
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    class Firework {
+      constructor(x, y) {
         this.particles = [];
-        for(let i=0; i<50; i++){
-          this.particles.push({
-            x: this.x,
-            y: this.y,
-            angle: Math.random() * 2 * Math.PI,
-            speed: Math.random() * 5 + 2,
-            radius: Math.random() * 3 + 2,
-            color: `hsl(${Math.random()*360}, 100%, 50%)`,
-            alpha: 1
-          });
+        for (let i = 0; i < 60; i++) {
+          const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+          this.particles.push(new Particle(x, y, color));
         }
       }
 
       update() {
-        this.particles.forEach(p => {
-          p.x += Math.cos(p.angle) * p.speed;
-          p.y += Math.sin(p.angle) * p.speed;
-          p.alpha -= 0.02;
-        });
+        this.particles.forEach(p => p.update());
         this.particles = this.particles.filter(p => p.alpha > 0);
       }
 
       draw() {
-        this.particles.forEach(p => {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, 2*Math.PI);
-          ctx.fillStyle = p.color.replace('1)', `${p.alpha})`);
-          ctx.fill();
-        });
+        this.particles.forEach(p => p.draw());
+      }
+
+      isDone() {
+        return this.particles.length === 0;
       }
     }
 
     function animate() {
-      ctx.fillStyle = 'rgba(0,0,0,0.1)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // очищаем canvas каждый кадр
       fireworks.forEach(fw => {
         fw.update();
         fw.draw();
       });
+      for (let i = fireworks.length - 1; i >= 0; i--) {
+        if (fireworks[i].isDone()) fireworks.splice(i, 1);
+      }
       requestAnimationFrame(animate);
     }
 
     animate();
 
-    document.getElementById('contactBtn').addEventListener('click', (e) => {
+    document.getElementById('contactBtn').addEventListener('click', () => {
       const x = Math.random() * canvas.width * 0.8 + canvas.width * 0.1;
       const y = Math.random() * canvas.height * 0.5 + canvas.height * 0.1;
       fireworks.push(new Firework(x, y));
