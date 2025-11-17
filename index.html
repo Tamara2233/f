@@ -1,131 +1,242 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Чат с ChatGPT</title>
-
-<style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Логистика будущего</title>
+  <style>
+    /* Общие стили */
     body {
-        margin: 0;
-        background: #111;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
-    #chat {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-    }
-    .msg {
-        max-width: 80%;
-        padding: 12px 14px;
-        border-radius: 10px;
-        margin-bottom: 12px;
-        line-height: 1.4em;
-        white-space: pre-wrap;
-    }
-    .user {
-        background: #444;
-        align-self: flex-end;
-    }
-    .bot {
-        background: #222;
-        border-left: 3px solid #4fa3ff;
-        align-self: flex-start;
-    }
-    #inputBar {
-        display: flex;
-        padding: 10px;
-        background: #000;
-        border-top: 2px solid #333;
-    }
-    #input {
-        flex: 1;
-        padding: 12px;
-        border-radius: 6px;
-        border: none;
-        outline: none;
-        font-size: 16px;
-        background: #222;
-        color: #fff;
-    }
-    #send {
-        margin-left: 10px;
-        padding: 12px 20px;
-        background: #4fa3ff;
-        border: none;
-        border-radius: 6px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-</style>
-</head>
 
+    header {
+      background: #0d6efd;
+      color: white;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 10px 0;
+      font-size: 2.5rem;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    main {
+      flex: 1;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: #0d6efd;
+      margin-bottom: 15px;
+    }
+
+    p {
+      line-height: 1.6;
+    }
+
+    .advantages {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .advantage {
+      flex: 1 1 300px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .advantage:hover {
+      transform: translateY(-5px);
+    }
+
+    footer {
+      background: #0d6efd;
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+      position: relative;
+    }
+
+    .contact-info {
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 12px 25px;
+      font-size: 1rem;
+      background: #ffc107;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #e0a800;
+    }
+
+    /* Адаптив */
+    @media(max-width: 768px) {
+      header h1 {
+        font-size: 2rem;
+      }
+
+      .advantages {
+        flex-direction: column;
+      }
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
 <body>
 
-<div id="chat"></div>
+  <header>
+    <h1>Логистика будущего</h1>
+    <p>Инновационные решения для глобальных цепочек поставок</p>
+  </header>
 
-<div id="inputBar">
-    <input id="input" placeholder="Напиши сообщение..." />
-    <button id="send">Отправить</button>
-</div>
+  <main>
+    <section>
+      <h2>О компании</h2>
+      <p>
+        «Логистика будущего» — это компания, которая преобразует традиционные логистические процессы. Мы создаем интеллектуальные, гибкие и экологичные решения для бизнеса по всему миру, используя передовые технологии и устойчивые практики.
+      </p>
+      <p>
+        Мы объединяем инновации, эффективность и экологическую ответственность, чтобы ваши поставки были надежными, быстрыми и безопасными.
+      </p>
+    </section>
 
-<script>
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
-const send = document.getElementById("send");
+    <section>
+      <h2>Преимущества работы с нами</h2>
+      <div class="advantages">
+        <div class="advantage">
+          <h3>Инновационные технологии</h3>
+          <p>Используем AI, IoT и Big Data для оптимизации цепочек поставок и сокращения затрат.</p>
+        </div>
+        <div class="advantage">
+          <h3>Экологическая ответственность</h3>
+          <p>Внедряем устойчивые практики для снижения углеродного следа и защиты окружающей среды.</p>
+        </div>
+        <div class="advantage">
+          <h3>Глобальная сеть</h3>
+          <p>Мы работаем по всему миру, обеспечивая бесперебойное движение товаров и надежную доставку.</p>
+        </div>
+        <div class="advantage">
+          <h3>Высокая эффективность</h3>
+          <p>Интеллектуальные системы управления поставками сокращают время и ресурсы на каждом этапе.</p>
+        </div>
+      </div>
+    </section>
+  </main>
 
-const API_KEY = "YOUR_OPENAI_API_KEY";
+  <footer>
+    <div class="contact-info">
+      <p>Телефон: 89001011010</p>
+      <p>Адрес: Орехово-Зуево, ул. Бирюкова 18</p>
+    </div>
+    <button id="contactBtn">Связаться</button>
+  </footer>
 
-async function askGPT(text) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-            model: "gpt-4.1",
-            messages: [
-                { role: "system", content: "Ты — ChatGPT, умный помощник." },
-                { role: "user", content: text }
-            ]
-        })
+  <canvas id="fireworkCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('fireworkCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     });
 
-    const data = await response.json();
-    return data.choices[0].message.content;
-}
+    const fireworks = [];
 
-function addMessage(text, role) {
-    const div = document.createElement("div");
-    div.className = "msg " + role;
-    div.textContent = text;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-}
+    class Firework {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.particles = [];
+        for(let i=0; i<50; i++){
+          this.particles.push({
+            x: this.x,
+            y: this.y,
+            angle: Math.random() * 2 * Math.PI,
+            speed: Math.random() * 5 + 2,
+            radius: Math.random() * 3 + 2,
+            color: `hsl(${Math.random()*360}, 100%, 50%)`,
+            alpha: 1
+          });
+        }
+      }
 
-async function sendMessage() {
-    const text = input.value.trim();
-    if (!text) return;
+      update() {
+        this.particles.forEach(p => {
+          p.x += Math.cos(p.angle) * p.speed;
+          p.y += Math.sin(p.angle) * p.speed;
+          p.alpha -= 0.02;
+        });
+        this.particles = this.particles.filter(p => p.alpha > 0);
+      }
 
-    addMessage(text, "user");
-    input.value = "";
+      draw() {
+        this.particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, 2*Math.PI);
+          ctx.fillStyle = p.color.replace('1)', `${p.alpha})`);
+          ctx.fill();
+        });
+      }
+    }
 
-    const reply = await askGPT(text);
-    addMessage(reply, "bot");
-}
+    function animate() {
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      fireworks.forEach(fw => {
+        fw.update();
+        fw.draw();
+      });
+      requestAnimationFrame(animate);
+    }
 
-send.onclick = sendMessage;
+    animate();
 
-input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendMessage();
-});
-</script>
+    document.getElementById('contactBtn').addEventListener('click', (e) => {
+      const x = Math.random() * canvas.width * 0.8 + canvas.width * 0.1;
+      const y = Math.random() * canvas.height * 0.5 + canvas.height * 0.1;
+      fireworks.push(new Firework(x, y));
+    });
+  </script>
 
 </body>
 </html>
